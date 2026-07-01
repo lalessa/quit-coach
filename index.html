@@ -21,16 +21,16 @@
     --serif:"Iowan Old Style",Georgia,"Times New Roman",serif;
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0}
+  html,body{height:100%;margin:0;overflow-x:hidden}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh}
+    background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;height:100dvh}
   header{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);
     background:var(--panel);flex:0 0 auto}
   header .logo{font-size:18px;font-weight:700}
   header .dot{color:var(--accent)}
   header .meta{font-size:11px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4}
 
-  nav{display:flex;justify-content:space-around;padding:9px 6px;background:var(--panel);border-top:1px solid var(--line);flex:0 0 auto}
+  nav{display:flex;justify-content:space-around;padding:9px 6px;padding-bottom:calc(9px + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line);flex:0 0 auto}
   nav button{background:transparent;border:none;color:var(--muted);padding:5px 20px;font-size:13px;cursor:pointer;font-family:inherit;border-radius:10px}
   nav button:hover{color:var(--text)}
   nav button.active{color:var(--accent);font-weight:500}
@@ -125,7 +125,7 @@
   .toolrow .ic{font-size:20px;flex:0 0 auto;width:24px;text-align:center}
   .toolrow .tl{font-size:14.5px;color:var(--text)}
   .toolrow .td{font-size:12px;color:var(--muted);margin-top:1px}
-  .apphead{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;background:var(--bg);border-bottom:none;flex:0 0 auto}
+  .apphead{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;padding-top:calc(16px + env(safe-area-inset-top));background:var(--bg);border-bottom:none;flex:0 0 auto}
   .greet{font-family:var(--serif);font-size:19px;color:var(--text)}
   .brandsub{font-size:12px;color:var(--muted);margin-top:2px}
   .daysfree{text-align:center;background:var(--panel2);border-radius:14px;padding:6px 13px}
@@ -218,11 +218,41 @@
     <!-- YOU -->
     <div class="view" id="you">
       <h2>You</h2>
+
+      <!-- short progress snapshot -->
       <div class="stats" id="stats"></div>
 
-      <h3>What the coach knows about me</h3>
-      <p class="sub">Everything the coach uses, in your control. Edit, hide, pin, or delete anything. Only a clean, curated summary is sent to the coach — never raw logs, old chat, or deprecated notes.</p>
+      <!-- simple summary of what the coach knows -->
+      <h3>What the coach knows about you</h3>
+      <p class="sub">A short, plain summary the coach keeps in mind. Only this curated summary is ever sent to the coach — never your raw chat or logs.</p>
       <div id="memBody"></div>
+
+      <!-- basic setup / settings -->
+      <h3>Setup &amp; settings</h3>
+      <label>Anthropic API key</label><input id="apiKey2" type="password" autocomplete="off">
+      <div class="row"><div><label>Model</label><select id="model2">
+        <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+        <option value="claude-opus-4-8">Claude Opus 4.8</option>
+        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option></select></div>
+        <div><label>Quit day</label><input id="quitDate2" type="date"></div></div>
+      <button class="ghost" id="saveSettings">Save settings</button>
+      <div class="hint" id="meta" style="margin-top:10px"></div>
+
+      <h3>Your data</h3>
+      <p class="sub">Everything lives in this browser. Export regularly so a cleared browser never wipes your history.</p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:8px 0"><input type="checkbox" id="exportKey" style="width:auto"> Include API key in export (off by default)</label>
+      <div class="btnrow">
+        <button class="ghost" id="clearChat">Clear conversation &amp; old memory</button>
+        <button class="ghost" id="exportBtn">Export backup</button>
+        <button class="ghost" id="importBtn">Import backup</button>
+        <button class="ghost danger" id="resetBtn">Reset everything</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none">
+      </div>
+
+      <!-- advanced (collapsed by default) -->
+      <details class="sumcard" id="advanced" style="margin-top:18px">
+        <summary><span class="st">Advanced</span><span class="sd">Optional — your "toward" statement, specifics, anchor, check-ins, craving log, outlets, audio, and program.</span></summary>
+        <div class="sbody">
 
       <h3>Why I'm quitting — my "toward" statement</h3>
       <p class="sub" style="margin-top:0">The healthy, strong, free version you're moving toward. Lead with what you want — not disgust.</p>
@@ -291,25 +321,8 @@
       <button class="ghost" id="saveProgram">Save program</button>
       <div class="hint" id="programStatus"></div>
 
-      <h3>Settings</h3>
-      <label>Anthropic API key</label><input id="apiKey2" type="password" autocomplete="off">
-      <div class="row"><div><label>Model</label><select id="model2">
-        <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-        <option value="claude-opus-4-8">Claude Opus 4.8</option>
-        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option></select></div>
-        <div><label>Quit day</label><input id="quitDate2" type="date"></div></div>
-      <button class="ghost" id="saveSettings">Save settings</button>
-      <div class="hint" id="meta" style="margin-top:10px"></div>
-      <h3>Your data</h3>
-      <p class="sub">Everything lives in this browser. Export regularly so a cleared browser never wipes your history.</p>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin:8px 0"><input type="checkbox" id="exportKey" style="width:auto"> Include API key in export (off by default)</label>
-      <div class="btnrow">
-        <button class="ghost" id="clearChat">Clear conversation &amp; old memory</button>
-        <button class="ghost" id="exportBtn">Export backup</button>
-        <button class="ghost" id="importBtn">Import backup</button>
-        <button class="ghost danger" id="resetBtn">Reset everything</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none">
-      </div>
+        </div>
+      </details>
     </div>
   </main>
 
@@ -593,7 +606,7 @@ function dictate(btn,sel){
   if(!SR){alert("Voice input needs Chrome or Edge (recent Safari may work). It isn't available in this browser.");return;}
   if(recog){stopRec();return;}
   const el=document.querySelector(sel);const base=el.value?el.value.trim():"";
-  recog=new SR();recog.lang="en-US";recog.interimResults=true;recog.continuous=true;
+  recog=new SR();recog.lang="en-US";recog.interimResults=true;recog.continuous=false;
   recBtn=btn;btn.classList.add("listening");btn.dataset.orig=btn.textContent;btn.textContent="● tap to stop";
   recog.onresult=e=>{let txt="";for(let i=0;i<e.results.length;i++)txt+=e.results[i][0].transcript;
     el.value=(base?base+" ":"")+txt;
@@ -602,7 +615,7 @@ function dictate(btn,sel){
   recog.onend=()=>stopRec();
   try{recog.start();}catch(e){stopRec();}
 }
-function stopRec(){if(recBtn){recBtn.classList.remove("listening");if(recBtn.dataset.orig)recBtn.textContent=recBtn.dataset.orig;}if(recog){try{recog.onend=null;recog.stop();}catch(e){}}recog=null;recBtn=null;}
+function stopRec(){if(recBtn){recBtn.classList.remove("listening");if(recBtn.dataset.orig)recBtn.textContent=recBtn.dataset.orig;}if(recog){try{recog.onresult=null;recog.onend=null;recog.onerror=null;recog.stop();}catch(e){}}recog=null;recBtn=null;}
 
 /* ===================== CHAT UI ===================== */
 function bubble(role,t){const d=document.createElement("div");d.className="msg "+(role==="user"?"user":"coach");d.textContent=t;$("#chat").appendChild(d);scrollChat();}
@@ -610,7 +623,7 @@ function sysNote(t){const d=document.createElement("div");d.className="msg syste
 function scrollChat(){const m=document.querySelector("#app main");if(m)m.scrollTop=m.scrollHeight;}
 const BANNED_OUT=/(90\s*second|hand\s*flat|set a timer|\btimer\b|\btime it\b|are you timing|\bbreathe\b|go for a walk|drink water|chew gum|cravings? pass|door closed|policy unchanged|protected win|that'?s the loop|same loop|\bprosecut|distract yourself|remember your why)/i;
 async function send(text){
-  if(busy)return;text=(text||$("#input").value).trim();if(!text)return;
+  if(busy)return;stopRec();text=(text||$("#input").value).trim();if(!text)return;
   $("#input").value="";$("#err").style.display="none";busy=true;$("#send").disabled=true;
   bubble("user",text);history.push({role:"user",content:text});set(LS.hist,history);
   const tp=document.createElement("div");tp.className="typing";tp.id="tp";tp.textContent="Coach is thinking…";$("#chat").appendChild(tp);scrollChat();
@@ -860,8 +873,7 @@ function showModal(title,body){
 }
 function renderBrain(){
   const el=$("#memBody");if(!el)return;const b=ensureBrain();
-  const live=b.cards.filter(c=>c.section!=="deprecated");
-  let html='<h4 class="ylabel">What the coach knows about me</h4>';
+  let html='';
   const SUM=[
     ["Core quit rule","No tobacco or nicotine, in any form.",["coreRule"]],
     ["Quit history","Quit ~5 years once via belief-change; later quits 6–12 months; no medication.",["quitHistory"]],
@@ -871,28 +883,11 @@ function renderBrain(){
     ["My values","Health, energy, the body — with beauty / fitness as one rotating lever.",["values"]]
   ];
   SUM.forEach(([title,collapsed,keys])=>{
-    const its=[].concat.apply([],keys.map(k=>b.cards.filter(c=>c.section===k)));
+    const its=[].concat.apply([],keys.map(k=>b.cards.filter(c=>c.section===k&&!c.hidden)));
     html+='<details class="sumcard"><summary><span class="st">'+esc(title)+'</span><span class="sd">'+esc(collapsed)+'</span></summary><div class="sbody">'+(its.length?its.map(brainRowRead).join(""):'<div class="empty">nothing yet</div>')+'</div></details>';
   });
-  html+='<details class="sumcard"><summary><span class="st">Current phase</span><span class="sd">'+esc(phaseInfo().label)+'</span></summary><div class="sbody"><div class="mmut">Set or change your quit day in Settings (below) to update this.</div></div></details>';
-  const pinned=live.filter(c=>c.pinned);
-  html+='<h4 class="ylabel">Pinned memories</h4>'+(pinned.length?pinned.map(brainRow).join(""):'<div class="empty">No pinned memories yet.</div>');
-  if(b.inbox.length){html+='<h4 class="ylabel">Memory inbox <span class="mmut">('+b.inbox.length+')</span></h4>';
-    html+=b.inbox.map(it=>'<div class="mrow"><span class="mtext">'+esc(it.text)+'</span><span class="ibacts"><button class="ghost" data-ib="approve" data-id="'+it.id+'">Approve</button><button class="ghost" data-ib="edit" data-id="'+it.id+'">Edit</button><button class="ghost danger" data-ib="reject" data-id="'+it.id+'">Reject</button></span></div>').join("");}
-  let pool=live.slice();if(_brainFilter!=="all")pool=pool.filter(c=>c.section===_brainFilter);
-  pool.sort((a,c)=>(c.pinned?1:0)-(a.pinned?1:0));
-  html+='<details class="sumcard" id="allMem"><summary><span class="st">All memory</span><span class="sd">Everything stored locally. The coach only receives a sanitized summary.</span></summary><div class="sbody">';
-  html+='<div class="chips" style="margin-bottom:8px">'+[["all","All"]].concat(BRAIN_SECTIONS).map(([k,l])=>'<button class="chip'+(_brainFilter===k?' on':'')+'" data-flt="'+k+'">'+esc(l)+'</button>').join("")+'</div>';
-  html+=(pool.length?pool.map(brainRow).join(""):'<div class="empty">none</div>');
-  html+='<div style="margin-top:12px" class="inputrow2"><input id="brainNew" placeholder="add something the coach should know"><select id="brainSec" style="max-width:150px">'+BRAIN_SECTIONS.map(s=>'<option value="'+s[0]+'">'+esc(s[1])+'</option>').join("")+'</select></div><div class="btnrow"><button class="ghost" id="brainAddBtn">Add</button></div>';
-  html+='</div></details>';
-  const banned=live.filter(c=>c.section!=="coachAvoids"&&c.section!=="whatFailed"&&BRAIN_BANNED.test(c.text)).length;
-  const hidden=live.filter(c=>c.hidden).length;const dep=b.cards.filter(c=>c.section==="deprecated").length;const active=live.filter(c=>!c.hidden).length;
-  html+='<details class="sumcard"><summary><span class="st">Memory health</span><span class="sd">'+active+' active · '+hidden+' hidden · '+dep+' deprecated</span></summary><div class="sbody">';
-  html+='<div class="mmut" style="font-size:12.5px">Active '+active+' · Hidden '+hidden+' · Deprecated '+dep+' · Banned-phrase hits '+banned+' · Last cleaned '+(b.migratedAt||"never")+'</div>';
-  html+='<div class="btnrow" style="margin-top:10px"><button class="ghost" data-bm="preview">Preview memory sent to coach</button><button class="ghost" data-bm="clean">Clean old coach memory</button><button class="ghost" data-bm="exportmem">Export memory</button><button class="ghost" data-bm="cleardep">Clear deprecated</button><button class="ghost danger" data-bm="resetmem">Reset memory only</button></div>';
-  html+='</div></details>';
-  el.innerHTML=html;wireBrain();
+  html+='<details class="sumcard"><summary><span class="st">Current phase</span><span class="sd">'+esc(phaseInfo().label)+'</span></summary><div class="sbody"><div class="mmut">Set or change your quit day in Setup &amp; settings to update this.</div></div></details>';
+  el.innerHTML=html;
 }
 function wireBrain(){
   document.querySelectorAll("#memBody [data-bm]").forEach(x=>x.onclick=()=>brainManage(x.dataset.bm));
