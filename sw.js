@@ -1,7 +1,7 @@
 /* See It Clearly — service worker. Caches the app shell so it opens and the
    offline parts (panic cards, feedback, the You tab) work without signal.
    API calls to Anthropic are never cached. Bump CACHE to force an update. */
-const CACHE = 'qc-shell-v2';
+const CACHE = 'qc-shell-v3';
 const SHELL = [
   './',
   './index.html',
