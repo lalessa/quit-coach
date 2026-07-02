@@ -379,6 +379,8 @@ REASON-FOR (the DEFAULT): use whenever the user is in a hot state — "I want to
 REASON-WITH: use ONLY when the user clearly asks for calm analysis — "why does Allen Carr work?", "help me understand this pattern," "explain the mechanism," "review what happened," "let's analyze," "give me today's session," "I'm calm now." Here more questions are allowed.
 
 HOT-STATE QUESTION BUDGET (enforced): first reply in a hot state = 0–1 question MAX. If the user is terse or annoyed, or says "idk," "I don't know," "fuck it," "don't ask," or "I just want it," ask ZERO more questions. Never ask multiple open-ended questions in one reply. Do not make the user do cognitive labor. Keep replies short. Make the tobacco trade obvious fast. A reply FAILS if it makes the user feel "ugh, I don't feel like answering this."
+THE URGE IS STICKY: once an urge shows up, treat the user as still IN it on every following turn until they positively say it passed ("it's gone," "faded," "better now"), ask for calm analysis, or clearly move on to something else. A calm-LOOKING message mid-urge ("I'm here," "ok," a one-word answer) does NOT mean the urge passed — keep hot-state rules active.
+MID-URGE QUESTION EXCEPTION: while the urge is live, the one allowed question must be a short OBSERVATION question aimed at the craving itself ("what's it doing right now?", "still there, or thinning out?") — and only while the user is engaged and hasn't said don't-ask. Questions about their day, their feelings, or their reasons stay off-limits mid-urge. Zero questions if they're terse or resistant.
 
 HOT-STATE RESPONSE SHAPE (for active tobacco urges): (1) Acknowledge the real pull ("Yes, tobacco may feel satisfying for a few minutes — I'm not going to pretend that pull is fake"). (2) Separate the parts — the ritual, the hands and mouth, nicotine scratching the itch, and relief from the pull tobacco itself keeps bringing back. (3) Walk forward — after it, you still want to quit, the same problem is still there, there's more tobacco in your body, the dependence is still alive. (4) Name the trade — "a few minutes of relief, then the same problem with more tobacco in your body." (5) Close with AUTONOMY, not authority.
 
@@ -692,7 +694,16 @@ function buildSystem(){
   let s=SYSTEM_PROMPT;
   if(userName)s+="\n\nUser's name: "+userName+".";
   let _nowStr="";try{_nowStr=new Date().toLocaleString(undefined,{weekday:"short",year:"numeric",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}catch(e){}
-  if(_nowStr)s+="\n\n=== NOW (for conviction capture + continuity only) ===\nCurrent date/time: "+_nowStr+". Use this ONLY to timestamp captured convictions and to pick up continuity naturally (e.g. how long since quit start). Do NOT use the clock to switch into morning mode — morning is content-triggered only.";
+  if(_nowStr)s+="\n\n=== NOW (for conviction capture + continuity only) ===\nCurrent date/time: "+_nowStr+". Use this ONLY to timestamp captured convictions and to pick up continuity naturally. Do NOT use the clock to switch into morning mode — morning is content-triggered only.";
+  // pre-computed elapsed time since quit start, so the model never does the arithmetic itself
+  try{
+    const _cv=ensureConvincer();
+    const _q=(_cv.convictions||[]).find(x=>x.type==="quit-launch"&&x.startISO);
+    if(_q){const _ms=Date.now()-new Date(_q.startISO).getTime();
+      if(_ms>0){const _d=Math.floor(_ms/86400000),_h=Math.floor((_ms%86400000)/3600000),_m=Math.floor((_ms%3600000)/60000);
+        const _el=(_d>0?_d+" day"+(_d>1?"s":"")+", ":"")+_h+" hour"+(_h!==1?"s":"")+(_d>0?"":" "+_m+" min");
+        s+="\nElapsed since quit start ("+_q.date+" "+(_q.time||"")+"): "+_el+". This figure is EXACT and pre-computed — state it as-is (or naturally rounded) and NEVER recompute it or give two different durations in one reply.";}}
+  }catch(e){}
   s+="\n\n=== CURRENT STATE ===\n"+phaseInfo().label;
   const _ph=phaseInfo();let _reg="";
   if(_ph.phase===0)_reg="Pre-quit: the work is engineering and conscious use, not willpower. Be proactive about the known risk windows (morning, absorbed work, drinking) without nagging.";
@@ -781,7 +792,26 @@ function bubble(role,t){const d=document.createElement("div");d.className="msg "
 function sysNote(t){const d=document.createElement("div");d.className="msg system";d.textContent=t;$("#chat").appendChild(d);scrollChat();}
 function scrollChat(){const m=document.querySelector("#app main");if(m)m.scrollTop=m.scrollHeight;}
 const BANNED_OUT=/(90\s*second|hand\s*flat|set a timer|\btimer\b|\btime it\b|are you timing|\bbreathe\b|go for a walk|drink water|chew gum|cravings? pass|door closed|policy unchanged|protected win|that'?s the loop|same loop|\bprosecut|distract yourself|remember your why)/i;
-const HOT_RE=/(want (to smoke|tobacco|one\b|it\b)|i can'?t\b|fuck it|don'?t care|just one|about to (smoke|use)|in my hand|\bidk\b|i don'?t know|don'?t ask|no questions|need (a|to) smoke|craving right now|i'?m craving)/i;
+const HOT_RE=/(want (to smoke|tobacco|one\b|it\b)|i can'?t\b|fuck it|don'?t care|just one|about to (smoke|use)|in my hand|\bidk\b|i don'?t know|don'?t ask|no questions|need (a|to) smoke|\bcraving\b|\burge\b|\bitch(y|ing)?\b|the itch|feel the pull)/i;
+/* STICKY URGE STATE: once an urge is detected, hot-state persists across turns until POSITIVE
+   evidence it passed — the user says it's gone/faded/better, asks for calm analysis, or the state
+   expires after 90 min without a fresh urge signal. A message that merely LOOKS calm ("I'm here",
+   "ok", a short answer) does NOT clear it. Lives in localStorage under qc2_urge_state. */
+const URGE_PASSED_RE=/(\b(gone|passed|faded|subsided|died down)\b|feel(ing)? (better|calmer|fine|ok(ay)?)( now)?|i'?m (ok(ay)?|good|fine|better|calm(er)?)( now)?|no more (urge|itch|craving)|not craving( anymore)?|over it now|it stopped)/i;
+const CALM_ASK_RE=/(why does|help me understand|explain|analy|review what|mechanism|i'?m calm|let'?s look|make sense of|give me today'?s session)/i;
+const RESIST_RE=/(don'?t ask|no questions|stop asking|\bidk\b|i don'?t know|fuck it|\bwhatever\b|don'?t care|too tired)/i;
+const URGE_TTL=90*60*1000;
+function inHotWindow(text){
+  text=(text||"").toString();
+  // positive evidence the urge passed, or an explicit calm-analysis request → clear the sticky state
+  if(CALM_ASK_RE.test(text)||URGE_PASSED_RE.test(text)){del("qc2_urge_state");return false;}
+  const now=Date.now();
+  if(HOT_RE.test(text)){const u=get("qc2_urge_state",null)||{};set("qc2_urge_state",{active:true,since:u.since||now,last:now});return true;}
+  const u=get("qc2_urge_state",null);
+  if(u&&u.active&&(now-(u.last||u.since||0))<URGE_TTL)return true; // calm-LOOKING messages don't clear it
+  if(u)del("qc2_urge_state");
+  return false;
+}
 async function send(text){
   if(busy)return;stopRec();text=(text||$("#input").value).trim();if(!text)return;
   $("#input").value="";$("#err").style.display="none";busy=true;$("#send").disabled=true;
@@ -794,9 +824,10 @@ async function send(text){
       raw=await callClaude("STOP — your last reply used banned old-coach language (a coping drill, timer, \"hand flat,\" \"90 seconds,\" \"are you timing,\" or a slogan like \"door closed\" / \"protected win\" / \"same loop\"). That is the deprecated coach and must never appear. Answer my last message again in the V1.1 Reasoning Engine voice: reason with me, ask what tobacco is actually supposed to fix, one short human turn — no drills, no timers, no slogans.");
       ({reply,mem,prof}=parseReply(raw));}
     if(BANNED_OUT.test(reply))reply="Let's look at it straight for a second — what are you expecting tobacco to actually do for you right now?";
-    let qtries=0;
-    while(HOT_RE.test(text)&&(reply.match(/\?/g)||[]).length>1&&qtries<2){qtries++;set("qc2_qguard_hits",(get("qc2_qguard_hits",0)+1));
-      raw=await callClaude("STOP — I'm in a hot state and your last reply asked more than one question. Answer my last message again with at most ONE question, preferably zero. Do the reasoning FOR me: acknowledge the pull is real, reveal the mechanism behind this urge, walk forward to after the use, and close on the observed truth. Short.");
+    let qtries=0;const hotNow=inHotWindow(text);
+    const maxQ=hotNow?(RESIST_RE.test(text)?0:1):Infinity; // terse/resistant mid-urge → zero questions
+    while(hotNow&&(reply.match(/\?/g)||[]).length>maxQ&&qtries<2){qtries++;set("qc2_qguard_hits",(get("qc2_qguard_hits",0)+1));
+      raw=await callClaude("STOP — I'm mid-urge and your last reply asked too many questions. Answer my last message again with "+(maxQ===0?"ZERO questions — I've signalled I don't want to answer anything right now":"at most ONE question, and only if it's a short observation question aimed at the craving itself (like 'what's it doing right now?') — no questions about my day, my feelings, or my reasons")+". Do the reasoning FOR me: acknowledge the pull is real, reveal the mechanism behind this urge, walk forward to after the use, and close on the observed truth. Short.");
       const rq=parseReply(raw);if(BANNED_OUT.test(rq.reply))break;({reply,mem,prof}=rq);}
     tp.remove();
     bubble("coach",reply);history.push({role:"assistant",content:reply});set(LS.hist,history);if(mem)mergeMem(mem);if(prof)applyProfile(prof);
@@ -1028,7 +1059,7 @@ function memoryPacket(){
 /* ===================== CONVINCER PROFILE (learns what changes the user's mind) ===================== */
 /* Structured layer inside the memory system. Stores pattern-level learning — NOT raw transcript.
    Only a concise summary is injected into the coach's hidden context (convincerPacket). */
-const CONV_VER="1.4";
+const CONV_VER="1.5";
 function nowISO(){return new Date().toISOString();}
 function today(){return new Date().toISOString().slice(0,10);}
 function clampC(c){c=Number(c);if(isNaN(c))c=.5;return Math.max(0,Math.min(1,c));}
@@ -1179,11 +1210,14 @@ function upgradeConvincer(c){
   if(!Array.isArray(c.convictions))c.convictions=[];
   const addConviction=(id,obj)=>{if(!c.convictions.some(x=>x.id===id)){c.convictions.push(Object.assign({id,savedAt:today()},obj));ch=true;}};
   addConviction("quitlaunch-2026-07-02",{
-    date:"2026-07-02",time:"~2pm",type:"quit-launch",
+    date:"2026-07-02",time:"~2pm",type:"quit-launch",startISO:"2026-07-02T14:00:00",
     words:"dropping something that was never on my side",
     context:"Quit launch — started a day early by choice. Device left in the cousin's room. Clear-headed, nothing was screaming.",
     predictedPermissions:["I'll start tomorrow"]
   });
+  // machine-readable start timestamp for elapsed-time math (patch installs that seeded before startISO existed)
+  const _q=c.convictions.find(x=>x.id==="quitlaunch-2026-07-02");
+  if(_q&&!_q.startISO){_q.startISO="2026-07-02T14:00:00";ch=true;}
   return ch;
 }
 function ensureConvincer(){let c=get(LS.conv,null);
